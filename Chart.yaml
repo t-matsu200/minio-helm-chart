@@ -1,0 +1,8 @@
+apiVersion: v3
+name: minio-sample
+description: MinIO Helm Chart Sample
+type: application
+version: 1.0.0
+appVersion: 1.0.0
+kubeVersion: '>=1.24.0-0'
+home: https://min.io/

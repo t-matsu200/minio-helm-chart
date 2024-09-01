@@ -1,0 +1,39 @@
+secretName: minio-secret
+
+minio:
+  repository: quay.io/minio/minio
+  tag: "RELEASE.2024-08-29T01-40-52Z"
+  pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 800m
+      memory: 1Gi
+    requests:
+      cpu: 400m
+      memory: 512Mi
+
+initjob:
+  repository: quay.io/minio/mc
+  tag: "RELEASE.2024-08-26T10-49-58Z"
+  pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 200m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+service:
+  type: NodePort
+  web:
+    nodePort: 31900
+  console:
+    nodePort: 31901
+
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi

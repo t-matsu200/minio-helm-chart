@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-initjob"
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 360
+  template:
+    metadata:
+      name: "{{ .Release.Name }}-initjob"
+      labels:
+        {{- include "minio.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: "{{ .Release.Name }}-sa"
+      containers:
+      - name: "{{ .Release.Name }}-initjob"
+        image: "{{ .Values.initjob.repository }}:{{ .Values.initjob.tag }}"
+        imagePullPolicy: {{ .Values.initjob.pullPolicy | quote }}
+        workingDir: /work
+        command: ["sh", "-c"]
+        args:
+        - until (mc config host add sample-minio ${MINIO_HOST}:${MINIO_PORT} ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}) do echo '...waiting...' && sleep 10; done;
+          mc mb sample-minio/${BUCKET_NAME};
+          mc ilm add --expire-days 60 --prefix "sample/" sample-minio/${BUCKET_NAME};
+          exit 0;
+        env:
+        - name: HOME
+          value: "/work"
+        - name: BUCKET_NAME
+          value: "sample-bucket"
+        - name: MINIO_HOST
+          value: "http://{{ .Release.Name }}-headless.{{ .Release.Namespace }}.svc"
+        - name: MINIO_PORT
+          value: "9000"
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretName | quote }}
+              key: access_key
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretName | quote }}
+              key: secret_key
+        resources:
+{{ toYaml .Values.initjob.resources | indent 10 }}
+        volumeMounts:
+        - name: work-volume
+          mountPath: /work
+      volumes:
+      - name: work-volume
+        emptyDir: {}

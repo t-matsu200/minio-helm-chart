@@ -1,0 +1,16 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }}
+  $ helm get all {{ .Release.Name }}
+
+Check the credentials for login to the console with the following command.
+
+  # admin user
+  $ kubectl get secret {{ .Values.secretName }} -n {{ .Release.Namespace }} -o jsonpath='{.data.access_key}' | base64 -d && echo
+
+  # admin password
+  $ kubectl get secret {{ .Values.secretName }} -n {{ .Release.Namespace }} -o jsonpath='{.data.secret_key}' | base64 -d && echo

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "{{ .Release.Name }}-statefulset"
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "minio.selectorLabels" . | nindent 6 }}
+  serviceName: "{{ .Release.Name }}-headless"
+  replicas: {{ .Values.minio.replicaCount }}
+  minReadySeconds: 30
+  template:
+    metadata:
+      labels:
+        {{- include "minio.selectorLabels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: "{{ .Release.Name }}-sa"
+      containers:
+      - name: "{{ .Release.Name }}"
+        image: "{{ .Values.minio.repository }}:{{ .Values.minio.tag }}"
+        imagePullPolicy: {{ .Values.minio.pullPolicy | quote }}
+        command: ["minio", "server", "--console-address", ":9001", "/data"]
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretName | quote }}
+              key: access_key
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secretName | quote }}
+              key: secret_key
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          failureThreshold: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          failureThreshold: 5
+          periodSeconds: 30
+        resources:
+{{ toYaml .Values.minio.resources | indent 10 }}
+        ports:
+        - containerPort: 9000
+          name: web
+        - containerPort: 9001
+          name: console
+        volumeMounts:
+        - name: minio-volume
+          mountPath: /data
+{{- if not .Values.persistence.enabled }}
+      volumes:
+      - name: minio-volume
+        emptyDir: {}
+{{- else }}
+  volumeClaimTemplates:
+  - metadata:
+      name: minio-volume
+      labels:
+        {{- include "minio.labels" . | nindent 8 }}
+    spec:
+      accessModes:
+      - {{ .Values.persistence.accessMode | quote }}
+      storageClassName: "my-storage-class"
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size | quote }}
+      {{- if .Values.persistence.storageClass }}
+      {{- if eq "-" .Values.persistence.storageClass }}
+      storageClassName: ""
+      {{- else }}
+      storageClassName: {{ .Values.persistence.storageClass | quote }}
+      {{- end }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Release.Name }}-headless"
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "minio.selectorLabels" . | nindent 4 }}
+  type: {{ .Values.service.type | quote }}
+  {{- if eq "ClusterIP" .Values.service.type }}
+  clusterIP: None
+  {{- end }}
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+      name: web
+      {{- if eq "NodePort" .Values.service.type }}
+      {{- if .Values.service.web.nodePort }}
+      nodePort: {{ .Values.service.web.nodePort }}
+      {{- end }}
+      {{- end }}
+    - protocol: TCP
+      port: 9001
+      targetPort: 9001
+      name: console
+      {{- if eq "NodePort" .Values.service.type }}
+      {{- if .Values.service.console.nodePort }}
+      nodePort: {{ .Values.service.console.nodePort }}
+      {{- end }}
+      {{- end }}
